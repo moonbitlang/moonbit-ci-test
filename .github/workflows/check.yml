@@ -1,0 +1,48 @@
+name: check
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  simple-use:
+    runs-on: macos-latest
+    env:
+      WECOM_ROBOT_KEY: ${{ secrets.WECOM_ROBOT_KEY }}
+    steps:
+      - name: install
+        run: |
+          /bin/bash -c "$(curl -fsSL https://cli.moonbitlang.com/bleeding/mac_m1_moon_setup.sh)"
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: update mooncakes registry
+        run: moon update
+
+      - name: simple use
+        run: |
+          moon new hello
+          cd hello
+          moon add bzy-debug/hello
+          moon run main
+
+      - name: notify on fail
+        if: ${{ failure() }}
+        run: |
+          curl "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=$WECOM_ROBOT_KEY" \
+            -H 'Content-Type: application/json' \
+            -d @- <<REQUEST_BODY
+            {
+              "msgtype": "text",
+              "text": {
+                "content": "🤣 bleeding daily ci failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              }
+            }
+          REQUEST_BODY

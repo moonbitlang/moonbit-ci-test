@@ -8,14 +8,16 @@ on:
     - cron: '0 2 * * *'
 
 jobs:
-  simple-use:
+  unix-test:
     runs-on: macos-latest
     env:
       WECOM_ROBOT_KEY: ${{ secrets.WECOM_ROBOT_KEY }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: install
         run: |
-          /bin/bash -c "$(curl -fsSL https://cli.moonbitlang.com/bleeding/mac_m1_moon_setup.sh)"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s bleeding
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
       - name: moon version
@@ -28,10 +30,9 @@ jobs:
 
       - name: simple use
         run: |
-          moon new hello
-          cd hello
-          moon add bzy-debug/hello
-          moon run main
+          for i in *.sh; do
+            bash $i
+          done
 
       - name: notify on fail
         if: ${{ failure() }}

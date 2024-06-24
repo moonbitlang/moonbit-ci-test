@@ -9,17 +9,27 @@ on:
   workflow_dispatch:
 
 jobs:
-  unix-test:
-    runs-on: macos-latest
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+    runs-on: ${{ matrix.os }}
     env:
       WECOM_ROBOT_KEY: ${{ secrets.WECOM_ROBOT_KEY }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: install
+      - name: install (unix)
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s bleeding
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: install (windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: moon version
         run: |
@@ -44,7 +54,7 @@ jobs:
             {
               "msgtype": "text",
               "text": {
-                "content": "🤣 bleeding daily ci failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                "content": "🤣 daily ci on ${{matrix.os}} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               }
             }
           REQUEST_BODY

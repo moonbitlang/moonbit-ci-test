@@ -9,10 +9,48 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  test-windows:
+    runs-on: windows-latest
+    env:
+      WECOM_ROBOT_KEY: ${{ secrets.WECOM_ROBOT_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install (windows)
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: moon version
+        run: |
+          moon version --all
+          moonrun --version
+
+      - name: update mooncakes registry
+        run: moon update
+
+      - name: simple use
+        run: |
+          Get-ChildItem -Filter *.ps1 | ForEach-Object {
+            PowerShell -File $_.FullName
+          }
+
+      - name: notify on fail
+        if: ${{ failure() }}
+        run: |
+          $body = @{
+              msgtype = "text"
+              text = @{
+                  content = "🤣 daily ci on windows-latest failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{github.run_id}}"
+              }
+          } | ConvertTo-Json
+
+          Invoke-RestMethod -Uri "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=$env:WECOM_ROBOT_KEY" -Method Post -ContentType "application/json" -Body $body
+
+  test-unix:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+        os: [ubuntu-latest, macos-latest, macos-13]
     runs-on: ${{ matrix.os }}
     env:
       WECOM_ROBOT_KEY: ${{ secrets.WECOM_ROBOT_KEY }}
